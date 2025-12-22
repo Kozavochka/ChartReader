@@ -81,6 +81,7 @@ def train(training_db, validation_db, start_iter=0):
     learning_rate    = system_configs.learning_rate
     max_iter    = system_configs.max_iter
     pretrained_model = system_configs.pretrain
+#     pretrained_model = "./cache/nnet/KPDetection/KPDetection_best.pkl"
     val_iter         = system_configs.val_iter
     decay_rate       = system_configs.decay_rate
     stepsize         = system_configs.stepsize
@@ -154,13 +155,13 @@ def train(training_db, validation_db, start_iter=0):
             print('Data extraction error occurred.')
             traceback.print_exc()
             error_count += 1
-            if error_count > 10:
+            if error_count > 1:
                 print('Too many extraction errors. Terminating...')
                 time.sleep(1)
                 break
             continue
 
-        if iteration % 500 == 0:
+        if iteration % 100 == 0:
             avg_training_loss = sum(total_training_loss) / len(total_training_loss)
             print(f"Training loss at iter {iteration}: {avg_training_loss}")
             wandb.log({"train_loss":training_loss.item()})

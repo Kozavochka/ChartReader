@@ -44,15 +44,24 @@ class Chart(DETECTION):
             [-0.5832747, 0.00994535, -0.81221408],
             [-0.56089297, 0.71832671, 0.41158938]
         ], dtype=np.float32)
-        self._cat_ids = [
-            0, 1, 2
-        ]
-        self._classes = {
-            ind: cat_id for ind, cat_id in enumerate(self._cat_ids)
-        }
-        self._coco_to_class_map = {
-            value: key for key, value in self._classes.items()
-        }
+#         self._cat_ids = [
+#             0, 1, 2
+#         ]
+#ИЗНАЧАЛЬНАЯ РЕАЛИЗАЦИЯ
+#         self._cat_ids = [   2  ]
+#         self._classes = {
+#             ind: cat_id for ind, cat_id in enumerate(self._cat_ids)
+#         }
+#         print(self._classes)
+# #         stop()
+#         self._coco_to_class_map = {
+#             value: key for key, value in self._classes.items()
+#         }
+
+#         self._cat_ids = [1, 2, 3]  # bars (1), lines (2)
+        self._cat_ids = [5]
+        self._classes = {ind: cat_id for ind, cat_id in enumerate(self._cat_ids)}  # {0:1, 1:2}
+        self._coco_to_class_map = {value: key for key, value in self._classes.items()}  # {1:0, 2:1}
         self._cache_file = os.path.join(cache_dir, "{}_cache.pkl".format(self._dataset))
         if(not is_inference):
             self._load_data()
@@ -77,7 +86,13 @@ class Chart(DETECTION):
         with open(self._label_file, "r") as f:
             data = json.load(f)
 
-        coco_ids = self._coco.getImgIds()
+#ИЗНАЧАЛЬНАЯ РЕАЛИЗАЦИЯ
+#         coco_ids = self._coco.getImgIds(catIds=[2])
+
+#GROK
+        coco_ids = []
+        for cat_id in self._cat_ids:
+            coco_ids.extend(self._coco.getImgIds(catIds=[cat_id]))
         eval_ids = {
             self._coco.loadImgs(coco_id)[0]["file_name"]: coco_id
             for coco_id in coco_ids
@@ -93,9 +108,17 @@ class Chart(DETECTION):
     
     def _extract_data(self):
         self._coco = COCO(self._label_file)
-        self._cat_ids = self._coco.getCatIds()
-        coco_image_ids = self._coco.getImgIds()
+        #Изначальная
+#         self._cat_ids = self._coco.getCatIds()
+#         coco_image_ids = self._coco.getImgIds(catIds=[2])
         #print(coco_image_ids)
+
+        #Грок
+#         cat_ids_to_load = [1, 2]  # bars + lines
+        coco_image_ids = []
+        for cat_id in self._cat_ids:
+            coco_image_ids.extend(self._coco.getImgIds(catIds=[cat_id]))
+#         coco_image_ids = list(set(coco_image_ids))  # unique
         self._image_ids = [
             self._coco.loadImgs(img_id)[0]["file_name"]
             for img_id in coco_image_ids
@@ -110,6 +133,8 @@ class Chart(DETECTION):
             categories = []
             max_len = 0
             for cat_id in self._cat_ids:
+                if cat_id not in self._coco_to_class_map:
+                    continue
                 category = self._coco_to_class_map[cat_id]
                 #print(f"category: {category}")
                 annotation_ids = self._coco.getAnnIds(imgIds=image["id"], catIds=cat_id)
@@ -151,7 +176,14 @@ class Chart(DETECTION):
             categories = np.array(categories, dtype=float)
             #print(f"Bboxes: {bboxes}")
             #print(f"Categories: {categories}")
-            bboxes = np.array(bboxes, dtype=float)
+            max_len = max(len(arr) for arr in bboxes) if bboxes else 0
+            aligned = []
+            for arr in bboxes:
+                if len(arr) < max_len:
+                    arr = np.pad(arr, (0, max_len - len(arr)), constant_values=-1)  # Pad -1
+                aligned.append(arr)
+            bboxes = np.array(aligned, dtype=float)
+
             if bboxes.size == 0 or categories.size == 0:
                 self._detections[image_id] = np.zeros((0, 5), dtype=np.float32)
             else:

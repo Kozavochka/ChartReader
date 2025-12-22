@@ -288,7 +288,7 @@ def sample_data(db, k_ind):
             # pie
             if(categories[i] == 2):
                 detection = detections[i]
-                if len(detection) < 5:
+                if len(detection) < 6:
                     print("Insufficient elements in the detection list.")
                     print(len(detection))
                     print(image_file)
@@ -401,6 +401,19 @@ def sample_data(db, k_ind):
                 center_masks[b_ind, :tag_len] = 1
             # pie
             elif(category == 2):
+                if len(detection) < 4:  # min bbox
+                        print(f"Skipping invalid legend (len={len(detection)}) in {image_file}")
+                        continue
+                #TODO
+#                 if len(detection) < 8:
+#                     print("Decetion < 6 for pie sampling_function 431")
+#                     if len(detection) > 0:
+#                         mean_val = float(np.mean(detection))
+#                     else:
+#                         mean_val = 0.0  # если detection вообще пустой, задаём дефолт
+#                     # дополняем список средними значениями до длины 6
+#                     while len(detection) < 8:
+#                         detection.append(mean_val)
                 xk1, yk1 = detection[0], detection[1] # arc point 1
                 xk2, yk2 = detection[2], detection[3] # arc point 2
                 xk3, yk3 = detection[4], detection[5] # center point
