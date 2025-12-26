@@ -23,6 +23,8 @@ class DETECTION(BASE):
 
         self._configs["rand_color"] = False
         self._configs["rand_crop"] = False
+        self._configs["annotation_mode"] = "default"
+        self._configs["point_categories"] = []
 
         self.update_config(db_config)
 

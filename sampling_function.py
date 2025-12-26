@@ -219,6 +219,7 @@ def sample_data(db, k_ind):
     rand_color = db.configs["rand_color"]
     lighting = db.configs["lighting"]
     rand_scales   = db.configs["rand_scales"]
+    point_categories = set(db.configs.get("point_categories", []))
     max_tag_len = 512
     max_group_len = 16
 
@@ -285,8 +286,8 @@ def sample_data(db, k_ind):
         #print(categories)
         detections = detections.copy().tolist()
         for i in range(len_detections):
-            # pie
-            if(categories[i] == 2):
+            # pie (skip if category is used for points)
+            if(categories[i] == 2 and categories[i] not in point_categories):
                 detection = detections[i]
                 if len(detection) < 6:
                     print("Insufficient elements in the detection list.")
@@ -324,6 +325,47 @@ def sample_data(db, k_ind):
         images[b_ind] = image.transpose((2, 0, 1))
         for ind, (detection, _category) in enumerate(zip(detections, categories)):
             category = int(_category)
+            if category in point_categories:
+                if len(detection) < 2:
+                    continue
+                xk, yk = detection[0], detection[1]
+                if bad_p(xk, yk, input_size):
+                    continue
+                fxk = xk * width_ratio
+                fyk = yk * height_ratio
+                xk = int(fxk)
+                yk = int(fyk)
+
+                if gaussian_bump:
+                    radius = gaussian_rad if gaussian_rad != -1 else 1
+                    if not bad_p(xk, yk, output_size):
+                        draw_gaussian(key_heatmaps[b_ind, category], [xk, yk], radius)
+                        draw_gaussian(center_heatmaps[b_ind, category], [xk, yk], radius)
+                else:
+                    if not bad_p(xk, yk, output_size):
+                        key_heatmaps[b_ind, category, yk, xk] = 1
+                        center_heatmaps[b_ind, category, yk, xk] = 1
+
+                if not bad_p(xk, yk, output_size):
+                    if tag_lens_keys[b_ind] >= max_tag_len - 1:
+                        print("Too many targets, skip!")
+                        print(tag_lens_keys[b_ind])
+                        print(image_file)
+                        continue
+                    tag_ind_key = tag_lens_keys[b_ind]
+                    key_regrs[b_ind, tag_ind_key, :] = [fxk - xk, fyk - yk]
+                    key_tags[b_ind, tag_ind_key] = yk * output_size[1] + xk
+                    tag_lens_keys[b_ind] += 1
+
+                    tag_ind_center = tag_lens_cens[b_ind]
+                    center_regrs[b_ind, tag_ind_center, :] = [fxk - xk, fyk - yk]
+                    center_tags[b_ind, tag_ind_center] = yk * output_size[1] + xk
+                    tag_lens_cens[b_ind] += 1
+                    group_target[b_ind, tag_ind_center, tag_ind_key] = 1
+
+                    key_masks[b_ind, :tag_lens_keys[b_ind]] = 1
+                    center_masks[b_ind, :tag_lens_cens[b_ind]] = 1
+                continue
             # line
             if(category == 1):
                 # remove cropped points

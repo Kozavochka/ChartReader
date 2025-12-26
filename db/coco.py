@@ -58,8 +58,10 @@ class Chart(DETECTION):
 #             value: key for key, value in self._classes.items()
 #         }
 
-#         self._cat_ids = [1, 2, 3]  # bars (1), lines (2)
-        self._cat_ids = [5]
+        # Points dataset: origin/x_end/y_end categories.
+        self._cat_ids = [8, 9, 10]
+#         self._cat_ids = [1, 2]
+        self._annotation_mode = self.configs.get("annotation_mode", "default")
         self._classes = {ind: cat_id for ind, cat_id in enumerate(self._cat_ids)}  # {0:1, 1:2}
         self._coco_to_class_map = {value: key for key, value in self._classes.items()}  # {1:0, 2:1}
         self._cache_file = os.path.join(cache_dir, "{}_cache.pkl".format(self._dataset))
@@ -114,11 +116,9 @@ class Chart(DETECTION):
         #print(coco_image_ids)
 
         #Грок
-#         cat_ids_to_load = [1, 2]  # bars + lines
         coco_image_ids = []
         for cat_id in self._cat_ids:
             coco_image_ids.extend(self._coco.getImgIds(catIds=[cat_id]))
-#         coco_image_ids = list(set(coco_image_ids))  # unique
         self._image_ids = [
             self._coco.loadImgs(img_id)[0]["file_name"]
             for img_id in coco_image_ids
@@ -136,40 +136,38 @@ class Chart(DETECTION):
                 if cat_id not in self._coco_to_class_map:
                     continue
                 category = self._coco_to_class_map[cat_id]
-                #print(f"category: {category}")
                 annotation_ids = self._coco.getAnnIds(imgIds=image["id"], catIds=cat_id)
                 annotations = self._coco.loadAnns(annotation_ids)
-                if(len(annotations) == 0):
+                if len(annotations) == 0:
                     continue
-                #if(annotation_ids):
-                    #print(f"annotation_ids: {annotation_ids}")
-                #else:
-                    #print("No annotation found")
-                if(category == 0):
-                    # bar
+                if self._annotation_mode == "points":
                     for annotation in annotations:
-                        #print(annotation)
                         bbox = np.array(annotation["bbox"])
-                        bbox[[2, 3]] += bbox[[0, 1]]
-                        bboxes.append(bbox)
+                        point = np.array([bbox[0], bbox[1]])
+                        bboxes.append(point)
                         categories.append(category)
-                        #max_len = max(max_len, len(bbox))
-                elif(category == 1):
-                    # line
-                    for annotation in annotations:
-                        #print(annotation)
-                        bbox = np.array(annotation["bbox"])
-                        bboxes.append(bbox)
-                        categories.append(category)
-                        max_len = max(max_len, len(bbox))
+                    max_len = max(max_len, 2)
                 else:
-                    # pie
-                    for annotation in annotations:
-                       # print(annotation)
-                        bbox = np.array(annotation["bbox"])
-                        bboxes.append(bbox)
-                        categories.append(category)
-                        #max_len = max(max_len, len(bbox))
+                    if category == 0:
+                        # bar
+                        for annotation in annotations:
+                            bbox = np.array(annotation["bbox"])
+                            bbox[[2, 3]] += bbox[[0, 1]]
+                            bboxes.append(bbox)
+                            categories.append(category)
+                    elif category == 1:
+                        # line
+                        for annotation in annotations:
+                            bbox = np.array(annotation["bbox"])
+                            bboxes.append(bbox)
+                            categories.append(category)
+                            max_len = max(max_len, len(bbox))
+                    else:
+                        # pie
+                        for annotation in annotations:
+                            bbox = np.array(annotation["bbox"])
+                            bboxes.append(bbox)
+                            categories.append(category)
             if(max_len):
                 for ind_bbox in range(len(bboxes)):
                     if len(bboxes[ind_bbox]) < max_len: bboxes[ind_bbox] = np.pad(bboxes[ind_bbox], (0, max_len - len(bboxes[ind_bbox])), 'constant', constant_values=(0, 0))
