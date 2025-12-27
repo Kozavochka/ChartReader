@@ -1,7 +1,7 @@
 {
     "system": {
         
-        "batch_size": 2,
+        "batch_size": 32,
         "testing_function" : "test_kp_detection",
         "train_split": "trainchart",
         "val_split": "valchart",
