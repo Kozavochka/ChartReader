@@ -35,7 +35,7 @@
         "rand_color": true,
 
         "top_k": 100,
-        "categories": 1,
+        "categories": 3,
         "annotation_mode": "default",
         "point_categories": [],
 
