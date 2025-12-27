@@ -210,7 +210,7 @@ def sample_data(db, k_ind):
     data_rng = system_configs.data_rng
     rand_crop     = db.configs["rand_crop"]
     border = db.configs["border"]
-    categories   = db.configs["categories"]
+    num_categories   = db.configs["categories"]
     input_size   = db.configs["input_size"]
     output_size  = db.configs["output_sizes"][0]
     gaussian_bump = db.configs["gaussian_bump"]
@@ -228,8 +228,8 @@ def sample_data(db, k_ind):
     # 分配两个张量，用于存储关键点和中心点的热图
     # 热图的尺寸：通常与输入图像的尺寸不同，因为网络中的卷积和池化操作会改变特征图的大小。在你提供的代码中，output_size（例如 [128, 128]）指定了热图的尺寸。
     # 多类别问题：在多目标检测或多关键点检测任务中，通常为每个类别生成一个独立的热图。在你的代码中，categories 代表类别数，batch_size 是批量大小。
-    center_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)
-    key_heatmaps    = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)
+    center_heatmaps = np.zeros((batch_size, num_categories, output_size[0], output_size[1]), dtype=np.float32)
+    key_heatmaps    = np.zeros((batch_size, num_categories, output_size[0], output_size[1]), dtype=np.float32)
     # 分配两个张量，用于存储关键点和中心点的回归目标
     center_regrs    = np.zeros((batch_size, max_tag_len + 1, 2), dtype=np.float32)
     key_regrs       = np.zeros((batch_size, max_tag_len + 1, 2), dtype=np.float32)
@@ -367,7 +367,7 @@ def sample_data(db, k_ind):
                     center_masks[b_ind, :tag_lens_cens[b_ind]] = 1
                 continue
             # line
-            if category == 1 or (categories == 1 and category == 0):
+            if category == 1 or (num_categories == 1 and category == 0):
                 # remove cropped points
                 tmp = []
                 for k in range(int(len(detection) / 2)):
