@@ -58,9 +58,8 @@ class Chart(DETECTION):
 #             value: key for key, value in self._classes.items()
 #         }
 
-        # Points dataset: origin/x_end/y_end categories.
-        self._cat_ids = [8, 9, 10]
-#         self._cat_ids = [1, 2]
+        # Line-only dataset: COCO category id 2 (lines).
+        self._cat_ids = [2]
         self._annotation_mode = self.configs.get("annotation_mode", "default")
         self._classes = {ind: cat_id for ind, cat_id in enumerate(self._cat_ids)}  # {0:1, 1:2}
         self._coco_to_class_map = {value: key for key, value in self._classes.items()}  # {1:0, 2:1}

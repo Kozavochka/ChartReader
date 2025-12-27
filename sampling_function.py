@@ -367,7 +367,7 @@ def sample_data(db, k_ind):
                     center_masks[b_ind, :tag_lens_cens[b_ind]] = 1
                 continue
             # line
-            if(category == 1):
+            if category == 1 or (categories == 1 and category == 0):
                 # remove cropped points
                 tmp = []
                 for k in range(int(len(detection) / 2)):
