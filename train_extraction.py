@@ -239,7 +239,8 @@ if __name__ == "__main__":
         group = "grouping",
         notes = "Test KP Grouping with Only Bars-Mixed Precision-No Crop or Bump",
         tags = ["ChartLLM", "KP Grouping"],
-        config = args
+        config = args,
+        mode = "disabled"
     )
     print(f"Training args: {args}")
     cfg_file = os.path.join(system_configs.config_dir, args.cfg_file + ".json")
