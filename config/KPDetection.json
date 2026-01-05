@@ -36,8 +36,8 @@
 
         "top_k": 100,
         "categories": 3,
-        "annotation_mode": "points",
-        "point_categories": [0, 1, 2],
+        "annotation_mode": "default",
+        "point_categories": [],
 
         "max_per_image": 100
     }
