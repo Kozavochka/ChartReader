@@ -372,9 +372,14 @@ def sample_data(db, k_ind):
                 tmp = []
                 for k in range(int(len(detection) / 2)):
                     #print(f"k = {k}")
-                    if not bad_p(detection[2*k], detection[2*k+1], input_size):
-                        tmp.append(detection[2*k].copy())
-                        tmp.append(detection[2*k+1].copy())
+                    xk = detection[2 * k]
+                    yk = detection[2 * k + 1]
+                    # Drop padded or invalid points early to avoid corrupt targets.
+                    if xk <= 0 or yk <= 0:
+                        continue
+                    if not bad_p(xk, yk, input_size):
+                        tmp.append(xk.copy())
+                        tmp.append(yk.copy())
                 detection = np.array(tmp)
 
                 # get center
