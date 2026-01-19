@@ -233,6 +233,8 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    # Default to "don't visualize my results" to avoid wandb prompts.
+    os.environ.setdefault("WANDB_MODE", "disabled")
     wandb.init(
         project = "ChartLLM-Extraction",
         name = "bar only",
