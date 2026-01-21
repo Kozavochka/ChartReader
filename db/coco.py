@@ -58,12 +58,12 @@ class Chart(DETECTION):
 #             value: key for key, value in self._classes.items()
 #         }
 
-        # Line-only dataset: COCO category id 2 (lines).
+        # Line-only dataset: COCO category id 2 (line).
         self._cat_ids = [2]
         self._annotation_mode = self.configs.get("annotation_mode", "default")
-        # Keep 3-class outputs but map line annotations to class index 1.
-        self._classes = {0: 2, 1: 2, 2: 2}
-        self._coco_to_class_map = {2: 1}
+        # Map line -> class 0 for line-only training.
+        self._classes = {0: 2}
+        self._coco_to_class_map = {2: 0}
         self._cache_file = os.path.join(cache_dir, "{}_cache.pkl".format(self._dataset))
         if(not is_inference):
             self._load_data()
