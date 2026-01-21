@@ -88,7 +88,6 @@ def train(training_db, validation_db, start_iter=0):
     val_ind = 0
     print("Initializing model...")
     nnet = Network()
-    #wandb.watch(nnet.model, log_freq=100)
     if pretrained_model is not None:
         print(pretrained_model)
         if not os.path.exists(pretrained_model):
@@ -233,6 +232,8 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    # Default to "don't visualize my results" to avoid wandb prompts.
+    os.environ.setdefault("WANDB_MODE", "disabled")
     wandb.init(
         project = "ChartLLM-Extraction",
         name = "bar only",
