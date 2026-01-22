@@ -367,7 +367,7 @@ def sample_data(db, k_ind):
                     center_masks[b_ind, :tag_lens_cens[b_ind]] = 1
                 continue
             # line
-            if(category == 1):
+            if(category == 0):
                 # remove cropped points
                 tmp = []
                 for k in range(int(len(detection) / 2)):
@@ -448,6 +448,7 @@ def sample_data(db, k_ind):
                 center_masks[b_ind, :tag_len] = 1
             # pie
             elif(category == 2):
+                print("THIS IS PIE, ALARM")
                 if len(detection) < 4:  # min bbox
                         print(f"Skipping invalid legend (len={len(detection)}) in {image_file}")
                         continue
@@ -534,6 +535,7 @@ def sample_data(db, k_ind):
                 center_masks[b_ind, :tag_lens_cens[b_ind]] = 1
                 key_masks[b_ind, :tag_lens_keys[b_ind]] = 1
             else:
+                print("THIS IS PIE, ALARM")
                 # bar
                 # 提取检测框的左上角和右下角坐标，以及中心点坐标。
                 #print(f"bind:{b_ind}")
