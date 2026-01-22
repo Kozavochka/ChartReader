@@ -83,6 +83,7 @@ def train(training_db, validation_db, start_iter=0):
     pretrained_model = system_configs.pretrain
 #     pretrained_model = "./cache/nnet/KPDetection/KPDetection_best.pkl"
     val_iter         = system_configs.val_iter
+    val_batches      = int(os.getenv("VAL_BATCHES", "10"))
     decay_rate       = system_configs.decay_rate
     stepsize         = system_configs.stepsize
     val_ind = 0
@@ -167,21 +168,25 @@ def train(training_db, validation_db, start_iter=0):
             total_training_loss = []
 
         if val_iter and validation_db.db_inds.size and iteration % val_iter == 0:
-            validation, val_ind = sample_data(validation_db, val_ind)
-            validation_data = []
-            for d in validation.values():
-                if isinstance(d, torch.Tensor):
-                    validation_data.append(d.to(device))
-                elif isinstance(d, list):
-                    validation_data.append([item.to(device) if isinstance(item, torch.Tensor) else item for item in d])
-                else:
-                    validation_data.append(d)
-            validation_loss = nnet.validate_step(*validation_data)
-            wandb.log({"val_loss":validation_loss.item()})
-            print(f"Validation loss at iter {iteration}: {validation_loss.item()}")
-            if validation_loss < best_val_loss:
-                best_val_loss = validation_loss
-                print(f"New best validation loss: {best_val_loss.item()}. Saving model...")
+            val_losses = []
+            for _ in range(max(1, val_batches)):
+                validation, val_ind = sample_data(validation_db, val_ind)
+                validation_data = []
+                for d in validation.values():
+                    if isinstance(d, torch.Tensor):
+                        validation_data.append(d.to(device))
+                    elif isinstance(d, list):
+                        validation_data.append([item.to(device) if isinstance(item, torch.Tensor) else item for item in d])
+                    else:
+                        validation_data.append(d)
+                validation_loss = nnet.validate_step(*validation_data)
+                val_losses.append(validation_loss.item())
+            avg_val_loss = float(np.mean(val_losses))
+            wandb.log({"val_loss": avg_val_loss})
+            print(f"Validation loss at iter {iteration} (avg {max(1, val_batches)} batches): {avg_val_loss}")
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                print(f"New best validation loss: {best_val_loss}. Saving model...")
                 nnet.save_model("best")
 
         if iteration % stepsize == 0:

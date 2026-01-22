@@ -15,7 +15,7 @@
         "opt_algo": "adam",
 
         "max_iter": 50000,
-        "stepsize": 20000
+        "stepsize": 10000
     },
     
     "db": {
@@ -28,8 +28,9 @@
         "input_size": [511, 511],
         "output_sizes": [[128, 128]],
 
-        "gaussian_bump": false,
+        "gaussian_bump": true,
         "gaussian_iou": 0.3,
+        "gaussian_radius": 2,
 
         "rand_crop": false,
         "rand_color": true,
