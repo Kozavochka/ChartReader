@@ -8,7 +8,7 @@
         "test_split": "testchart",
 
         "learning_rate": 0.00025,
-        "decay_rate": 2,
+        "decay_rate": 10,
 
         "val_iter": 500,
 
@@ -28,9 +28,8 @@
         "input_size": [511, 511],
         "output_sizes": [[128, 128]],
 
-        "gaussian_bump": true,
+        "gaussian_bump": false,
         "gaussian_iou": 0.3,
-        "gaussian_radius": 2,
 
         "rand_crop": false,
         "rand_color": true,
