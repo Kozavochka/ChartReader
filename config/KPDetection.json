@@ -8,14 +8,14 @@
         "test_split": "testchart",
 
         "learning_rate": 0.00025,
-        "decay_rate": 3,
+        "decay_rate": 1.5,
 
         "val_iter": 500,
 
         "opt_algo": "adam",
 
-        "max_iter": 80000,
-        "stepsize": 20000
+        "max_iter": 100000,
+        "stepsize": 30000
     },
     
     "db": {
@@ -30,7 +30,7 @@
 
         "gaussian_bump": true,
         "gaussian_iou": 0.3,
-        "gaussian_radius": 2,
+        "gaussian_radius": 3,
         "rand_crop": false,
         "rand_color": true,
 
