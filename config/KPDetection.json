@@ -8,13 +8,13 @@
         "test_split": "testchart",
 
         "learning_rate": 0.00025,
-        "decay_rate": 10,
+        "decay_rate": 3,
 
         "val_iter": 500,
 
         "opt_algo": "adam",
 
-        "max_iter": 50000,
+        "max_iter": 80000,
         "stepsize": 20000
     },
     
@@ -34,7 +34,7 @@
         "rand_crop": false,
         "rand_color": true,
 
-        "top_k": 100,
+        "top_k": 150,
         "categories": 1,
         "annotation_mode": "default",
         "point_categories": [],
