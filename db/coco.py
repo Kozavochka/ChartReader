@@ -149,19 +149,19 @@ class Chart(DETECTION):
                     max_len = max(max_len, 2)
                 else:
                     if category == 0:
+                        # line (line-only training: class 0)
+                        for annotation in annotations:
+                            bbox = np.array(annotation["bbox"])
+                            bboxes.append(bbox)
+                            categories.append(category)
+                            max_len = max(max_len, len(bbox))
+                    elif category == 1:
                         # bar
                         for annotation in annotations:
                             bbox = np.array(annotation["bbox"])
                             bbox[[2, 3]] += bbox[[0, 1]]
                             bboxes.append(bbox)
                             categories.append(category)
-                    elif category == 1:
-                        # line
-                        for annotation in annotations:
-                            bbox = np.array(annotation["bbox"])
-                            bboxes.append(bbox)
-                            categories.append(category)
-                            max_len = max(max_len, len(bbox))
                     else:
                         # pie
                         for annotation in annotations:
