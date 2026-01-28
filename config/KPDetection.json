@@ -8,14 +8,14 @@
         "test_split": "testchart",
 
         "learning_rate": 0.0001,
-        "decay_rate": 10,
+        "decay_rate": 5,
 
         "val_iter": 500,
 
         "opt_algo": "adam",
 
-        "max_iter": 50000,
-        "stepsize": 20000
+        "max_iter": 90000,
+        "stepsize": 30000
     },
     
     "db": {
