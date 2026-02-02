@@ -7,7 +7,7 @@
         "val_split": "valchart",
         "test_split": "testchart",
 
-        "learning_rate": 0.0001,
+        "learning_rate": 0.00025,
         "decay_rate": 5,
 
         "val_iter": 500,
