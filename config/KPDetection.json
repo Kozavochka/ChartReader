@@ -29,7 +29,7 @@
         "output_sizes": [[128, 128]],
 
         "gaussian_bump": true,
-        "gaussian_iou": 0.3,
+        "gaussian_iou": 0.4,
         "gaussian_radius": 3,
         "rand_crop": false,
         "rand_color": false,
