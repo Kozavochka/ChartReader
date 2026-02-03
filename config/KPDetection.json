@@ -30,7 +30,7 @@
 
         "gaussian_bump": true,
         "gaussian_iou": 0.3,
-        "gaussian_radius": -1,
+        "gaussian_radius": 3,
         "rand_crop": false,
         "rand_color": false,
 
