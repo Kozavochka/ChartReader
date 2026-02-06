@@ -34,11 +34,11 @@
         "rand_crop": false,
         "rand_color": false,
 
-        "top_k": 150,
+        "top_k": 300,
         "categories": 1,
         "annotation_mode": "default",
         "point_categories": [],
 
-        "max_per_image": 100
+        "max_per_image": 300
     }
 }
