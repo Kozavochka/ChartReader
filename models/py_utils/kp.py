@@ -513,17 +513,7 @@ class kp_group(nn.Module):
         return self._test(*xs, **kwargs)
 
 class DetectionLoss(nn.Module):
-    def __init__(
-        self,
-        lambda_,
-        lambda_b,
-        regr_weight=1,
-        focal_loss=_neg_loss,
-        key_heat_weight=0.5,
-        center_heat_weight=1.0,
-        key_regr_weight=1.0,
-        center_regr_weight=1.0,
-    ):
+    def __init__(self, lambda_, lambda_b, regr_weight=1, focal_loss=_neg_loss):
         super(DetectionLoss, self).__init__()
 
         self.regr_weight = regr_weight
@@ -531,10 +521,6 @@ class DetectionLoss(nn.Module):
         self.regr_loss   = _regr_loss
         self.lambda_ = lambda_
         self.lambda_b = lambda_b
-        self.key_heat_weight = key_heat_weight
-        self.center_heat_weight = center_heat_weight
-        self.key_regr_weight = key_regr_weight
-        self.center_regr_weight = center_regr_weight
 
     def forward(self, outs, targets):
         stride = 4
@@ -566,17 +552,13 @@ class DetectionLoss(nn.Module):
         key_heats = [_sigmoid(t) for t in key_heats]
         center_heats = [_sigmoid(b) for b in center_heats]
 
-        focal_loss += self.key_heat_weight * self.focal_loss(
-            key_heats, gt_key_heat, self.lambda_, self.lambda_b
-        )
-        focal_loss += self.center_heat_weight * self.focal_loss(
-            center_heats, gt_center_heat, self.lambda_, self.lambda_b
-        )
+        focal_loss += self.focal_loss(key_heats, gt_key_heat, self.lambda_, self.lambda_b) / 2
+        focal_loss += self.focal_loss(center_heats, gt_center_heat, self.lambda_, self.lambda_b) 
 
         regr_loss = 0
         for key_regr, center_regr in zip(key_regrs, center_regrs):
-            regr_loss += self.key_regr_weight * self.regr_loss(key_regr, gt_key_regr, gt_key_mask)
-            regr_loss += self.center_regr_weight * self.regr_loss(center_regr, gt_center_regr, gt_center_mask)
+            regr_loss += self.regr_loss(key_regr, gt_key_regr, gt_key_mask)
+            regr_loss += self.regr_loss(center_regr, gt_center_regr, gt_center_mask)
         regr_loss = self.regr_weight * regr_loss
 
         loss = (focal_loss + regr_loss) / len(key_heats)

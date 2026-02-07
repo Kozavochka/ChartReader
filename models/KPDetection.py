@@ -15,14 +15,4 @@ class Model(kp_detection):
             kp_layer=residual, cnv_dim=256
         )
 
-loss = DetectionLoss(
-    focal_loss=_neg_loss,
-    lambda_=4,
-    lambda_b=2,
-    # Prioritize keypoint quality; keep center supervision weaker to avoid
-    # degrading keypoint learning when center targets are noisy/hard.
-    key_heat_weight=1.0,
-    center_heat_weight=0.35,
-    key_regr_weight=1.0,
-    center_regr_weight=0.35,
-)
+loss = DetectionLoss(focal_loss=_neg_loss, lambda_=4, lambda_b=2)
