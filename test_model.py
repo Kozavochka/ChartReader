@@ -24,8 +24,13 @@ def _rescale_points(dets, ratios, borders, sizes):
     np.clip(xs, 0, sizes[0, 1], out=xs)
     np.clip(ys, 0, sizes[0, 0], out=ys)
 
-def kp_decode_detection(nnet, images):
-    detections_tl_detection_br, *_ = nnet.test([images])
+def kp_decode_detection(nnet, images, K=None, kernel=1):
+    test_kwargs = {}
+    if K is not None:
+        test_kwargs["K"] = int(K)
+    if kernel is not None:
+        test_kwargs["kernel"] = int(kernel)
+    detections_tl_detection_br, *_ = nnet.test([images], **test_kwargs)
     detections_tl = detections_tl_detection_br[0]
     detections_br = detections_tl_detection_br[1]
     # 重新排列数组的维度。原始数组的第三维（索引为2）现在变成了新数组的第一维，原始数组的第二维（索引为1）现在变成了新数组的第二维，原始数组的第一维（索引为0）现在变成了新数组的第三维。
@@ -36,6 +41,7 @@ def kp_decode_detection(nnet, images):
 def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=0):
 
     categories = db.configs["categories"]
+    top_k = db.configs.get("top_k", 100)
     max_per_image = db.configs["max_per_image"]
     height, width = image.shape[0:2]
 
@@ -70,7 +76,7 @@ def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=
         images = torch.from_numpy(images)
 
     # 使用 decode_func 函数进行解码以获取检测结果 
-    dets_tl, dets_br = decode_func(nnet, images)
+    dets_tl, dets_br = decode_func(nnet, images, K=top_k)
 
     # 对检测到的点进行重新缩放
     _rescale_points(dets_tl, ratios, borders, sizes)
@@ -136,8 +142,13 @@ def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=
 # images: 输入图像，可以是一批图像。
 # K: 一个整数，定义了要检测的最大关键点数量。
 # kernel: 核大小，通常用于卷积操作。
-def kp_decode_grouping(nnet, images):
-    detections_tl, detections_br, group_scores = nnet.test([images])
+def kp_decode_grouping(nnet, images, K=None, kernel=1):
+    test_kwargs = {}
+    if K is not None:
+        test_kwargs["K"] = int(K)
+    if kernel is not None:
+        test_kwargs["kernel"] = int(kernel)
+    detections_tl, detections_br, group_scores = nnet.test([images], **test_kwargs)
     detections_tl = detections_tl.data.cpu().numpy().transpose((2, 1, 0))
     detections_br = detections_br.data.cpu().numpy().transpose((2, 1, 0))
     return detections_tl, detections_br, group_scores
@@ -146,6 +157,7 @@ def test_kp_grouping(image, db, nnet, decode_func=kp_decode_grouping, cuda_id=0)
     # 参数初始化
 
     categories = db.configs["categories"]
+    top_k = db.configs.get("top_k", 100)
     max_per_image = db.configs["max_per_image"]
     
     height, width = image.shape[0:2]
@@ -181,7 +193,7 @@ def test_kp_grouping(image, db, nnet, decode_func=kp_decode_grouping, cuda_id=0)
         images = torch.from_numpy(images)
         
     # 调用解码函数来获取检测，并重新缩放点以匹配原始图像尺寸。
-    dets_tl, dets_br, group_scores = decode_func(nnet, images)
+    dets_tl, dets_br, group_scores = decode_func(nnet, images, K=top_k)
     _rescale_points(dets_tl, ratios, borders, sizes)
     _rescale_points(dets_br, ratios, borders, sizes)
     detections_point_tl.append(dets_tl)

@@ -57,10 +57,10 @@ class Network(nn.Module):
             loss = self(xs, ys)
             return loss.mean()
 
-    def test(self, xs):
+    def test(self, xs, **kwargs):
         self.eval()
         with torch.no_grad():
-            return self.model(*xs)
+            return self.model(*xs, **kwargs)
     # 学习率是一个正数，用于控制模型参数在训练过程中的更新幅度。在梯度下降优化算法中，学习率与梯度的乘积确定了每次迭代中参数的更新量。
     # 较高的学习率会导致参数更新得更快，可能使训练速度加快，但也可能造成震荡和不稳定。较低的学习率会使参数更新得更慢，可能使训练更稳定，但可能会陷入局部最小值或导致训练速度变慢。
     def set_lr(self, lr):
