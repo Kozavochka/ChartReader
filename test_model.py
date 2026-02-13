@@ -142,12 +142,16 @@ def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=
 # images: 输入图像，可以是一批图像。
 # K: 一个整数，定义了要检测的最大关键点数量。
 # kernel: 核大小，通常用于卷积操作。
-def kp_decode_grouping(nnet, images, K=None, kernel=1):
+def kp_decode_grouping(nnet, images, K=None, kernel=1, key_score_thresh=None, center_score_thresh=None):
     test_kwargs = {}
     if K is not None:
         test_kwargs["K"] = int(K)
     if kernel is not None:
         test_kwargs["kernel"] = int(kernel)
+    if key_score_thresh is not None:
+        test_kwargs["grouping_key_score_thresh"] = float(key_score_thresh)
+    if center_score_thresh is not None:
+        test_kwargs["grouping_center_score_thresh"] = float(center_score_thresh)
     detections_tl, detections_br, group_scores = nnet.test([images], **test_kwargs)
     detections_tl = detections_tl.data.cpu().numpy().transpose((2, 1, 0))
     detections_br = detections_br.data.cpu().numpy().transpose((2, 1, 0))
@@ -193,7 +197,15 @@ def test_kp_grouping(image, db, nnet, decode_func=kp_decode_grouping, cuda_id=0)
         images = torch.from_numpy(images)
         
     # 调用解码函数来获取检测，并重新缩放点以匹配原始图像尺寸。
-    dets_tl, dets_br, group_scores = decode_func(nnet, images, K=top_k)
+    grouping_key_score_thresh = db.configs.get("grouping_key_score_thresh")
+    grouping_center_score_thresh = db.configs.get("grouping_center_score_thresh")
+    dets_tl, dets_br, group_scores = decode_func(
+        nnet,
+        images,
+        K=top_k,
+        key_score_thresh=grouping_key_score_thresh,
+        center_score_thresh=grouping_center_score_thresh,
+    )
     _rescale_points(dets_tl, ratios, borders, sizes)
     _rescale_points(dets_br, ratios, borders, sizes)
     detections_point_tl.append(dets_tl)

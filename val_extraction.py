@@ -65,7 +65,14 @@ def pre_load_nets(model_type, data_dir, cache_dir, iteration):
 # keys: 关键点列表。
 # cens: 中心点列表。
 # group_scores: 组分数矩阵。
-def get_groups(keys, cens, group_scores):
+def get_groups(
+    keys,
+    cens,
+    group_scores,
+    key_score_thresh=0.4,
+    center_score_thresh=0.4,
+    group_score_thresh=0.3,
+):
     # 设置阈值，用于过滤关键点和中心点。
     #print(group_scores)
     #  通过阈值过滤关键点和中心点。
@@ -73,77 +80,53 @@ def get_groups(keys, cens, group_scores):
     # p[0] > thres: 这是过滤条件，其中 p 是 keys[1] 中的一个元素（例如一个坐标点或分数），p[0] 是该元素的第一个值。只有当此值大于预定义阈值 thres 时，该元素才会被包括在新列表中。
     #print(keys[1])
     #print(cens)
-    thres = 0.4
     groups = []
     group_scores_ = group_scores
-    group_thres = 0.4
-    for category in range (3):
-        keys_trim = [p for p in keys[category] if p[0] > thres]
-        cens_trim = [p for p in cens[category] if p[0] > thres]
+    for category in keys.keys():
+        keys_trim = [p for p in keys[category] if p[0] > key_score_thresh]
+        cens_trim = [p for p in cens[category] if p[0] > center_score_thresh]
         #print(cens_trim)
         #print("Shape of group_scores:", group_scores.shape)
         #print("Length of cens_trim:", len(cens_trim))
         #print("Length of keys_trim:", len(keys_trim))
         #从 group_scores_ 的第一个维度（通常是行）中获取前 len(cens_trim) 个元素。第二个维度（通常是列）中获取从 len(cens_trim) 列到 len(keys_trim)+len(cens_trim) 列的所有列。
-        group_scores = group_scores_[:len(cens_trim), len(cens_trim) :len(keys_trim)+len(cens_trim)]
+        if not hasattr(group_scores_, "shape") or len(group_scores_.shape) < 2:
+            continue
+
+        rows = int(group_scores_.shape[0])
+        cols = int(group_scores_.shape[1])
+        num_centers = min(len(cens_trim), rows)
+        num_keys = min(len(keys_trim), max(cols - num_centers, 0))
+
+        if num_centers == 0 or num_keys < 2:
+            continue
+
+        cens_trim = cens_trim[:num_centers]
+        keys_trim = keys_trim[:num_keys]
+        group_scores = group_scores_[:num_centers, num_centers:num_centers + num_keys]
         #print(f"group_scores: {group_scores_}")
         #print(f"keys_trim: {keys_trim}")
         #print(f"cens_trim: {cens_trim}")
-        if len(cens_trim) == 0 or len(keys_trim) < 2: continue
-        # 初始化组列表和组阈值。
-        #print(f"Type: {category}")
-        #print(cens_trim)
-        #print(keys_trim)
-        if category == 1:
-            if len(cens_trim) == 0 or len(keys_trim) < 2: continue
-            # 遍历中心点，并根据分数将关键点组织成组。
-            for i in range(len(cens_trim)):
-                group = []
-                vals = []
-                cen = cens_trim[i]
-                group += [cen[2],cen[3]]
-                for j in range(len(keys_trim)):
-                    val = group_scores[i][j].item()
-                    if val > group_thres:
-                        key = keys_trim[j]
-                        group += [key[2],key[3]]
-                        vals.append(val)
-                if len(vals) == 0: continue
-                group.append(sum(vals)/len(vals))
-                group.append(category)
-                groups.append(group)
-            continue
-        if category == 0:
-            # 如果 cens_trim 为空或 keys_trim 长度小于2，则返回空列表。这可能是为了确保有足够的数据来继续处理。
-            if len(cens_trim) == 0 or len(keys_trim) < 2: continue
-            # 截取 group_scores 矩阵的一部分，可能与集中度和关键点有关。
-            # 行索引：[:len(cens_trim)] - 这部分选择了矩阵的前 len(cens_trim) 行，其中 cens_trim 可能表示集中点或中心点的一个子集。
-            # 列索引：[len(cens_trim) : len(keys_trim) + len(cens_trim)] - 这部分选择了从 len(cens_trim) 到 len(keys_trim) + len(cens_trim) 的列，其中 keys_trim 可能表示关键点的一个子集。
-            # 使用 PyTorch 的 topk 函数从 group_scores 中选择前2个最大值，并获取它们的值和索引。
-            vals, inds = torch.topk(group_scores, 2)
-        elif category == 2:
-            if len(cens_trim) == 0 or len(keys_trim) < 3: continue
-            vals, inds = torch.topk(group_scores, 3)
-            group_thres = 0.1
-        #print(vals)
-        #print(cens_trim)    
-        #print(f"len cens_trim: {len(cens_trim)}, len vals: {len(vals)}")
         for i in range(len(cens_trim)):
-            # 如果当前值大于组阈值的数量等于 vals 的第二维大小
-            if (vals[i] > group_thres).sum().item() == vals.size(1):
-                group = []
-                cen = cens_trim[i]
-                group += [cen[2],cen[3]]
-                for ind in inds[i]:
-                    key = keys_trim[ind]
-                    group += [key[2],key[3]]
-                group.append(vals[i].mean().item())
-                group.append(category)
-                groups.append(group)
+            group = []
+            vals = []
+            cen = cens_trim[i]
+            group += [cen[2], cen[3]]
+            for j in range(len(keys_trim)):
+                val = group_scores[i][j].item()
+                if val > group_score_thresh:
+                    key = keys_trim[j]
+                    group += [key[2], key[3]]
+                    vals.append(val)
+            if len(vals) == 0:
+                continue
+            group.append(sum(vals) / len(vals))
+            group.append(category)
+            groups.append(group)
 
     return groups
 
-    
+
 def test(image_path, model_type):
     image = cv2.imread(image_path)
     # 使用 PyTorch 的 torch.no_grad() 上下文管理器来禁用梯度计算，以提高推理速度并减少内存使用。
@@ -154,7 +137,7 @@ def test(image_path, model_type):
             # 从 results 中提取关键点（keys）和中心点（centers）。
             keys, centers = results[0], results[1]
             thres = 0.
-            keys = {k: [p for p in v.tolist() if p[0]>thres] for k,v in keys.items()} 
+            keys = {k: [p for p in v.tolist() if p[0]>thres] for k,v in keys.items()}
             centers = {k: [p for p in v.tolist() if p[0]>thres] for k,v in centers.items()}
             return (keys, centers)
         if model_type == 'KPGrouping':
@@ -163,7 +146,7 @@ def test(image_path, model_type):
             #print(keys)
             #print(centers)
             #print(group_scores)
-            keys = {k: [p for p in v.tolist()] for k,v in keys.items()} 
+            keys = {k: [p for p in v.tolist()] for k,v in keys.items()}
             centers = {k: [p for p in v.tolist()] for k,v in centers.items()}
             #print(keys)
             #print(centers)
@@ -171,8 +154,18 @@ def test(image_path, model_type):
             #print(len(keys))
             #print(len(centers))
             #print(len(group_scores))
-            groups = get_groups(keys, centers, group_scores)
-            
+            grouping_key_score_thresh = methods[model_type][0].configs.get("grouping_key_score_thresh", 0.4)
+            grouping_center_score_thresh = methods[model_type][0].configs.get("grouping_center_score_thresh", 0.4)
+            grouping_link_score_thresh = methods[model_type][0].configs.get("grouping_link_score_thresh", 0.3)
+            groups = get_groups(
+                keys,
+                centers,
+                group_scores,
+                key_score_thresh=grouping_key_score_thresh,
+                center_score_thresh=grouping_center_score_thresh,
+                group_score_thresh=grouping_link_score_thresh,
+            )
+
             return (keys, centers, groups)
 
 def parse_args():

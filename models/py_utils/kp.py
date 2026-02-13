@@ -227,6 +227,10 @@ class kp_detection(nn.Module):
 
     def _test(self, *xs, **kwargs):
         image = xs[0]
+        key_score_thresh = float(kwargs.pop("grouping_key_score_thresh", 0.4))
+        center_score_thresh = float(kwargs.pop("grouping_center_score_thresh", 0.4))
+        key_score_thresh = float(kwargs.pop("grouping_key_score_thresh", 0.4))
+        center_score_thresh = float(kwargs.pop("grouping_center_score_thresh", 0.4))
 
         inter = self.pre(image)
         outs  = []
@@ -438,6 +442,8 @@ class kp_group(nn.Module):
 
     def _test(self, *xs, **kwargs):
         image = xs[0]
+        key_score_thresh = float(kwargs.pop("grouping_key_score_thresh", 0.4))
+        center_score_thresh = float(kwargs.pop("grouping_center_score_thresh", 0.4))
 
         inter = self.pre(image)
         outs  = []
@@ -478,9 +484,10 @@ class kp_group(nn.Module):
         _, _, height, width = key_cnv.size() # heatmap size
         key_feat    = _transpose_and_gather_feat(key_cnv, key_inds)
         center_feat = _transpose_and_gather_feat(center_cnv, center_inds)
-        key_len = (key_scores[b_ind] > 0.4).sum()
-        cen_len = (center_scores[b_ind] > 0.4).sum()
-        if key_len == 0 or cen_len == 0: return detections_key, detections_cen, torch.zeros((1,1))
+        key_len = int((key_scores[b_ind] > key_score_thresh).sum().item())
+        cen_len = int((center_scores[b_ind] > center_score_thresh).sum().item())
+        if key_len == 0 or cen_len == 0:
+            return detections_key, detections_cen, torch.zeros((1, 1), device=detections_key.device)
         
         cen_emb = center_feat[b_ind][:cen_len, :]
         tmp_inds= center_inds[b_ind][:cen_len].float()

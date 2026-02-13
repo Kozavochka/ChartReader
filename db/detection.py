@@ -25,6 +25,10 @@ class DETECTION(BASE):
         self._configs["rand_crop"] = False
         self._configs["annotation_mode"] = "default"
         self._configs["point_categories"] = []
+        # Optional grouping inference thresholds. Unused for KPDetection unless set in config.
+        self._configs["grouping_key_score_thresh"] = None
+        self._configs["grouping_center_score_thresh"] = None
+        self._configs["grouping_link_score_thresh"] = None
 
         self.update_config(db_config)
 
