@@ -16,4 +16,12 @@ class Model(kp_group):
         )
 
 
-loss = GroupingLoss(focal_loss=_neg_loss, lambda_=4, lambda_b=2)  
+loss = GroupingLoss(
+    focal_loss=_neg_loss,
+    lambda_=4,
+    lambda_b=2,
+    group_loss_type="balanced_focal_ce",
+    group_focal_gamma=2.0,
+    max_pos_weight=50.0,
+    group_loss_weight=10.0,
+)

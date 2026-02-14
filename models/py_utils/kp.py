@@ -572,7 +572,17 @@ class DetectionLoss(nn.Module):
         return loss.unsqueeze(0)
     
 class GroupingLoss(nn.Module):
-    def __init__(self, lambda_, lambda_b, regr_weight=1, focal_loss=_neg_loss):
+    def __init__(
+        self,
+        lambda_,
+        lambda_b,
+        regr_weight=1,
+        focal_loss=_neg_loss,
+        group_loss_type="balanced_focal_ce",
+        group_focal_gamma=2.0,
+        max_pos_weight=50.0,
+        group_loss_weight=10.0,
+    ):
         super(GroupingLoss, self).__init__()
 
         self.regr_weight = regr_weight
@@ -580,7 +590,34 @@ class GroupingLoss(nn.Module):
         self.regr_loss   = _regr_loss
         self.lambda_ = lambda_
         self.lambda_b = lambda_b
-        self.group_loss = nn.CrossEntropyLoss()
+        self.group_loss_type = group_loss_type
+        self.group_focal_gamma = float(group_focal_gamma)
+        self.max_pos_weight = float(max_pos_weight)
+        self.group_loss_weight = float(group_loss_weight)
+
+    def _balanced_group_loss(self, logits, targets):
+        targets = targets.long()
+        pos_count = int((targets == 1).sum().item())
+        neg_count = int((targets == 0).sum().item())
+
+        # Avoid exploding gradients when positives are rare.
+        if pos_count > 0 and neg_count > 0:
+            pos_weight = min(self.max_pos_weight, float(neg_count) / float(pos_count))
+        else:
+            pos_weight = 1.0
+
+        class_weight = torch.tensor([1.0, pos_weight], device=logits.device, dtype=logits.dtype)
+        ce = nn.functional.cross_entropy(logits, targets, weight=class_weight, reduction="none")
+
+        if self.group_loss_type == "balanced_ce":
+            return ce.mean()
+        if self.group_loss_type == "balanced_focal_ce":
+            probs = nn.functional.softmax(logits, dim=1)
+            pt = probs.gather(1, targets.unsqueeze(1)).squeeze(1).clamp(1e-6, 1.0 - 1e-6)
+            focal_factor = (1.0 - pt) ** self.group_focal_gamma
+            return (focal_factor * ce).mean()
+        # Fallback to balanced CE if an unknown type is provided.
+        return ce.mean()
     # 定义了如何计算总损失。参数 outputs 包括预测的输出，而 targets 包括真实的目标值。
     def forward(self, outputs, targets):
         stride = 4
@@ -625,14 +662,22 @@ class GroupingLoss(nn.Module):
             if tmp.reshape(-1).size(0) == 0: continue
             group_targets_trim.append(tmp.reshape(-1))
         
-        group_loss = 0
+        group_losses = []
         for b_ind in range(len(group_targets_trim)):
-            group_loss += self.group_loss(group_preds[b_ind], group_targets_trim[b_ind])
-        group_loss = 10 * group_loss # lr = 0.000025
-        # print('focal_loss:', focal_loss.item(), 'regr_loss:', regr_loss.item(), 'group_loss:', group_loss.item())
-        # 计算了总损失，将前面计算的三个损失组合在一起，并返回。
-        if group_loss == 0:
-            loss = (focal_loss + regr_loss) / len(key_heats)
+            logits = group_preds[b_ind]
+            targets_trim = group_targets_trim[b_ind]
+            if logits.numel() == 0 or targets_trim.numel() == 0:
+                continue
+            # Keep shapes aligned in case of rare decode/target mismatch.
+            valid_len = min(logits.size(0), targets_trim.numel())
+            logits = logits[:valid_len]
+            targets_trim = targets_trim[:valid_len]
+            group_losses.append(self._balanced_group_loss(logits, targets_trim))
+
+        if group_losses:
+            group_loss = self.group_loss_weight * torch.stack(group_losses).mean()
         else:
-            loss = (focal_loss + regr_loss + group_loss) / len(key_heats)
+            group_loss = torch.zeros((), device=gt_key_heat.device, dtype=gt_key_heat.dtype)
+
+        loss = (focal_loss + regr_loss + group_loss) / len(key_heats)
         return loss.unsqueeze(0)
