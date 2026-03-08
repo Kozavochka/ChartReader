@@ -31,13 +31,18 @@
         "gaussian_bump": true,
         "gaussian_iou": 0.4,
         "gaussian_radius": 3,
+        "center_gaussian_radius": 6,
         "rand_crop": false,
         "rand_color": false,
 
         "top_k": 300,
+        "center_top_k": 50,
+        "key_nms_kernel": 1,
+        "center_nms_kernel": 3,
         "categories": 1,
         "annotation_mode": "default",
         "point_categories": [],
+        "line_center_mode": "nearest_real",
 
         "max_per_image": 300
     }

@@ -147,39 +147,54 @@ def _topk(scores, K=20):
     topk_xs   = (topk_inds % width).int().float()
     return topk_scores, topk_inds, topk_clses, topk_ys, topk_xs
 
-def _decode_detection_or_group(tl_heat, br_heat, tl_regr, br_regr, K=100, kernel=1, option="pure"):
+def _decode_detection_or_group(
+    tl_heat,
+    br_heat,
+    tl_regr,
+    br_regr,
+    K=100,
+    kernel=1,
+    option="pure",
+    center_K=None,
+    key_kernel=None,
+    center_kernel=None,
+):
     batch, cat, height, width = tl_heat.size()
+    key_K = int(K)
+    center_K = key_K if center_K is None else int(center_K)
+    key_kernel = kernel if key_kernel is None else key_kernel
+    center_kernel = kernel if center_kernel is None else center_kernel
     
     # 通过Sigmoid激活函数将热图的值限制在0到1之间。
     tl_heat = torch.sigmoid(tl_heat)
     br_heat = torch.sigmoid(br_heat)
     # 非极大值抑制（NMS）用于去除冗余和重叠的检测。这里应用于两个热图。
-    tl_heat = _nms(tl_heat, kernel=kernel)
-    br_heat = _nms(br_heat, kernel=kernel)
+    tl_heat = _nms(tl_heat, kernel=key_kernel)
+    br_heat = _nms(br_heat, kernel=center_kernel)
     # 使用_topk函数从每个热图中提取最高分数的K个检测。
-    tl_scores, tl_inds, tl_clses, tl_ys, tl_xs = _topk(tl_heat, K=K)
-    br_scores, br_inds, br_clses, br_ys, br_xs = _topk(br_heat, K=K)
+    tl_scores, tl_inds, tl_clses, tl_ys, tl_xs = _topk(tl_heat, K=key_K)
+    br_scores, br_inds, br_clses, br_ys, br_xs = _topk(br_heat, K=center_K)
     tl_regr_ = _transpose_and_gather_feat(tl_regr, tl_inds)
     br_regr_ = _transpose_and_gather_feat(br_regr, br_inds)
 
     # 使用收集的回归特征精细调整检测的位置。
     # view方法用于改变张量的形状。它接收新形状的尺寸作为输入，并返回新形状的张量，其中的数据与原始张量相同。
     # 这里，tl_scores是一个张量，其中包含每个批次的前K个顶部左侧检测的分数。通过调用view(1, batch, K)，我们将其形状更改为(1, batch, K)，其中batch是批次大小，K是每个批次的检测数量。
-    tl_scores_ = tl_scores.view(1, batch, K)
-    tl_clses_ = tl_clses.view(1, batch, K)
-    tl_xs_ = tl_xs.view(1, batch, K)
-    tl_ys_ = tl_ys.view(1, batch, K)
-    tl_regr_ = tl_regr_.view(1, batch, K, 2)
+    tl_scores_ = tl_scores.view(1, batch, key_K)
+    tl_clses_ = tl_clses.view(1, batch, key_K)
+    tl_xs_ = tl_xs.view(1, batch, key_K)
+    tl_ys_ = tl_ys.view(1, batch, key_K)
+    tl_regr_ = tl_regr_.view(1, batch, key_K, 2)
     # 将x方向的调整添加到检测的x坐标上。
     tl_xs_ += tl_regr_[:, :, :, 0]
     # 将y方向的调整添加到检测的y坐标上。
     tl_ys_ += tl_regr_[:, :, :, 1]
     
-    br_scores_ = br_scores.view(1, batch, K)
-    br_clses_ = br_clses.view(1, batch, K)
-    br_xs_ = br_xs.view(1, batch, K)
-    br_ys_ = br_ys.view(1, batch, K)
-    br_regr_ = br_regr_.view(1, batch, K, 2)
+    br_scores_ = br_scores.view(1, batch, center_K)
+    br_clses_ = br_clses.view(1, batch, center_K)
+    br_xs_ = br_xs.view(1, batch, center_K)
+    br_ys_ = br_ys.view(1, batch, center_K)
+    br_regr_ = br_regr_.view(1, batch, center_K, 2)
     br_xs_ += br_regr_[:, :, :, 0]
     br_ys_ += br_regr_[:, :, :, 1]
     # 通过将分数、类别和位置连接在一起，创建顶部左侧和底部右侧的检测。
@@ -192,17 +207,17 @@ def _decode_detection_or_group(tl_heat, br_heat, tl_regr, br_regr, K=100, kernel
     
 def _decode_detection(
         tl_heat, br_heat, tl_regr, br_regr,
-        K=300, kernel=1
+        K=300, kernel=1, center_K=None, key_kernel=None, center_kernel=None
 ):
     return _decode_detection_or_group(tl_heat, br_heat, tl_regr, br_regr,
-        K, kernel, "pure")
+        K, kernel, "pure", center_K=center_K, key_kernel=key_kernel, center_kernel=center_kernel)
 
 def _decode_group(
         tl_heat, br_heat, tl_regr, br_regr,
-        K=300, kernel=1
+        K=300, kernel=1, center_K=None, key_kernel=None, center_kernel=None
 ):
     return _decode_detection_or_group(tl_heat, br_heat, tl_regr, br_regr,
-        K, kernel, "group")
+        K, kernel, "group", center_K=center_K, key_kernel=key_kernel, center_kernel=center_kernel)
 
 # 这个函数定义了一个负采样损失（negative loss），通常用于二分类问题，特别是在目标检测和图像分割任务中，其中正样本（目标）和负样本（背景）的数量可能会极度不平衡。
 # 接受四个参数：preds（模型的预测值），gt（真实的地面真值标签），lambda_ 和 lambda_b（损失计算中使用的超参数）。

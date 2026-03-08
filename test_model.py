@@ -24,12 +24,26 @@ def _rescale_points(dets, ratios, borders, sizes):
     np.clip(xs, 0, sizes[0, 1], out=xs)
     np.clip(ys, 0, sizes[0, 0], out=ys)
 
-def kp_decode_detection(nnet, images, K=None, kernel=1):
+def kp_decode_detection(
+    nnet,
+    images,
+    K=None,
+    kernel=1,
+    center_K=None,
+    key_kernel=None,
+    center_kernel=None,
+):
     test_kwargs = {}
     if K is not None:
         test_kwargs["K"] = int(K)
     if kernel is not None:
         test_kwargs["kernel"] = int(kernel)
+    if center_K is not None:
+        test_kwargs["center_K"] = int(center_K)
+    if key_kernel is not None:
+        test_kwargs["key_kernel"] = int(key_kernel)
+    if center_kernel is not None:
+        test_kwargs["center_kernel"] = int(center_kernel)
     detections_tl_detection_br, *_ = nnet.test([images], **test_kwargs)
     detections_tl = detections_tl_detection_br[0]
     detections_br = detections_tl_detection_br[1]
@@ -42,6 +56,9 @@ def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=
 
     categories = db.configs["categories"]
     top_k = db.configs.get("top_k", 100)
+    center_top_k = db.configs.get("center_top_k")
+    key_nms_kernel = db.configs.get("key_nms_kernel", 1)
+    center_nms_kernel = db.configs.get("center_nms_kernel", 1)
     max_per_image = db.configs["max_per_image"]
     height, width = image.shape[0:2]
 
@@ -76,7 +93,14 @@ def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=
         images = torch.from_numpy(images)
 
     # 使用 decode_func 函数进行解码以获取检测结果 
-    dets_tl, dets_br = decode_func(nnet, images, K=top_k)
+    dets_tl, dets_br = decode_func(
+        nnet,
+        images,
+        K=top_k,
+        center_K=center_top_k,
+        key_kernel=key_nms_kernel,
+        center_kernel=center_nms_kernel,
+    )
 
     # 对检测到的点进行重新缩放
     _rescale_points(dets_tl, ratios, borders, sizes)
@@ -142,12 +166,28 @@ def test_kp_detection(image, db, nnet, decode_func=kp_decode_detection, cuda_id=
 # images: 输入图像，可以是一批图像。
 # K: 一个整数，定义了要检测的最大关键点数量。
 # kernel: 核大小，通常用于卷积操作。
-def kp_decode_grouping(nnet, images, K=None, kernel=1, key_score_thresh=None, center_score_thresh=None):
+def kp_decode_grouping(
+    nnet,
+    images,
+    K=None,
+    kernel=1,
+    center_K=None,
+    key_kernel=None,
+    center_kernel=None,
+    key_score_thresh=None,
+    center_score_thresh=None,
+):
     test_kwargs = {}
     if K is not None:
         test_kwargs["K"] = int(K)
     if kernel is not None:
         test_kwargs["kernel"] = int(kernel)
+    if center_K is not None:
+        test_kwargs["center_K"] = int(center_K)
+    if key_kernel is not None:
+        test_kwargs["key_kernel"] = int(key_kernel)
+    if center_kernel is not None:
+        test_kwargs["center_kernel"] = int(center_kernel)
     if key_score_thresh is not None:
         test_kwargs["grouping_key_score_thresh"] = float(key_score_thresh)
     if center_score_thresh is not None:
@@ -162,6 +202,9 @@ def test_kp_grouping(image, db, nnet, decode_func=kp_decode_grouping, cuda_id=0)
 
     categories = db.configs["categories"]
     top_k = db.configs.get("top_k", 100)
+    center_top_k = db.configs.get("center_top_k")
+    key_nms_kernel = db.configs.get("key_nms_kernel", 1)
+    center_nms_kernel = db.configs.get("center_nms_kernel", 1)
     max_per_image = db.configs["max_per_image"]
     
     height, width = image.shape[0:2]
@@ -203,6 +246,9 @@ def test_kp_grouping(image, db, nnet, decode_func=kp_decode_grouping, cuda_id=0)
         nnet,
         images,
         K=top_k,
+        center_K=center_top_k,
+        key_kernel=key_nms_kernel,
+        center_kernel=center_nms_kernel,
         key_score_thresh=grouping_key_score_thresh,
         center_score_thresh=grouping_center_score_thresh,
     )

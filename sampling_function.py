@@ -191,6 +191,31 @@ def bad_p(x, y, output_size):
     # 通过减去一个非常小的值，该函数确保坐标不会正好位于边界上。
     return x == 0 or y == 0 or x >= (output_size[1]-1e-2) or y >= (output_size[0]-1e-2)
 
+
+def get_line_center_point(points, center_mode="nearest_real"):
+    """
+    Select a semantic center for a polyline.
+
+    `points` must be a flat array [x1, y1, x2, y2, ...] with visible points only.
+    For odd point counts, the middle point is used directly.
+    For even point counts, `nearest_real` snaps the midpoint to the nearest real point.
+    """
+    if len(points) < 2:
+        return None
+
+    pts = np.asarray(points, dtype=np.float32).reshape(-1, 2)
+    num_points = pts.shape[0]
+    if num_points == 0:
+        return None
+
+    mid = num_points // 2
+    if num_points % 2 == 1 or center_mode != "nearest_real":
+        return pts[mid]
+
+    midpoint = (pts[mid - 1] + pts[mid]) / 2.0
+    dists = np.sum((pts - midpoint) ** 2, axis=1)
+    return pts[int(np.argmin(dists))]
+
 # 计算三个点 a, b, 和 c 所构成的三角形的中心位置
 def get_center(a, b, c):
     # 计算从点 a 到点 c 的向量
@@ -216,6 +241,9 @@ def sample_data(db, k_ind):
     gaussian_bump = db.configs["gaussian_bump"]
     gaussian_iou  = db.configs["gaussian_iou"]
     gaussian_rad  = db.configs["gaussian_radius"]
+    center_gaussian_rad = db.configs.get("center_gaussian_radius")
+    center_gaussian_rad = gaussian_rad if center_gaussian_rad is None else center_gaussian_rad
+    line_center_mode = db.configs.get("line_center_mode", "nearest_real")
     rand_color = db.configs["rand_color"]
     lighting = db.configs["lighting"]
     rand_scales   = db.configs["rand_scales"]
@@ -382,14 +410,13 @@ def sample_data(db, k_ind):
                         tmp.append(yk.copy())
                 detection = np.array(tmp)
 
-                # get center
-                if len(detection) == 0: continue
-                elif len(detection)//2 % 2 == 0:
-                    mid = len(detection) // 2
-                    xce, yce = (detection[mid-2] + detection[mid]) / 2, (detection[mid-1] + detection[mid+1]) / 2
-                else:
-                    mid = len(detection) // 2
-                    xce, yce = detection[mid-1].copy(), detection[mid].copy()
+                # get semantic center from a real line point when possible
+                if len(detection) == 0:
+                    continue
+                center_point = get_line_center_point(detection, center_mode=line_center_mode)
+                if center_point is None:
+                    continue
+                xce, yce = float(center_point[0]), float(center_point[1])
                 fxce = (xce * width_ratio)
                 fyce = (yce * height_ratio)
                 xce = int(fxce)
@@ -412,8 +439,9 @@ def sample_data(db, k_ind):
                     for k in range(int(len(detection) / 2)):
                         if not bad_p(detection[2*k], detection[2*k+1], output_size):
                             draw_gaussian(key_heatmaps[b_ind, int(category)], [detection[2 * k], detection[2 * k + 1]], radius)
+                    center_radius = radius if center_gaussian_rad in (-1, None) else center_gaussian_rad
                     if not bad_p(xce, yce, output_size):
-                        draw_gaussian(center_heatmaps[b_ind, int(category)], [xce, yce], radius)
+                        draw_gaussian(center_heatmaps[b_ind, int(category)], [xce, yce], int(center_radius))
 
                 else:
                     for k in range(int(len(detection) / 2)):
